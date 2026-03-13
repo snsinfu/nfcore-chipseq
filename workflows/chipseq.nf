@@ -10,6 +10,7 @@
 include { IGV                                 } from '../modules/local/igv'
 include { MULTIQC                             } from '../modules/local/multiqc'
 include { MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS } from '../modules/local/multiqc_custom_phantompeakqualtools'
+include { DOWNSAMPLE_BAM                      } from '../modules/local/downsample_bam'
 
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -451,11 +452,42 @@ workflow CHIPSEQ {
         ch_macs_gsize = KHMER_UNIQUEKMERS.out.kmers.map { it.text.trim() }
     }
 
+    // Downsample bam
+    ch_for_downsample = ch_filtered_bam
+        .join(ch_filtered_bai, by: [0])
+        .join(ch_filtered_flagstat, by: [0])
+
+    if (params.downsample_reads) {
+        DOWNSAMPLE_BAM (
+            ch_for_downsample,
+            params.downsample_reads
+        )
+        ch_callpeak_base_bam_bai = DOWNSAMPLE_BAM.out.bam
+        ch_versions = ch_versions.mix(DOWNSAMPLE_BAM.out.versions.first())
+    } else {
+        ch_callpeak_base_bam_bai = ch_filtered_bam.join(ch_filtered_bai, by: [0])
+    }
+
     // Create channels: [ meta, ip_bam, control_bam ]
-    ch_ip_control_bam_bai
+    ch_callpeak_base_bam_bai
         .map {
-            meta, bams, bais ->
-                [ meta , bams[0], bams[1] ]
+            meta, bam, bai ->
+                meta.control ? null : [ meta.id, [ bam ] , [ bai ] ]
+        }
+        .set { ch_callpeak_control_bam_bai }
+
+    ch_callpeak_base_bam_bai
+        .map {
+            meta, bam, bai ->
+                meta.control ? [ meta.control, meta, [ bam ], [ bai ] ] : null
+        }
+        .combine(ch_callpeak_control_bam_bai, by: 0)
+        .map { it -> [ it[1], it[2] + it[4], it[3] + it[5] ] }
+        .set { ch_callpeak_ip_control_bam_bai }
+
+    ch_callpeak_ip_control_bam_bai
+        .map {
+            meta, bams, bais -> [ meta, bams[0], bams[1] ]
         }
         .set { ch_ip_control_bam }
 
