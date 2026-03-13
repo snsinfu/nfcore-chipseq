@@ -20,16 +20,16 @@ process DOWNSAMPLE_BAM {
     def prefix = "${meta.id}.downsampled"
 
     """
-    total_reads=\$(awk '/mapped (/ { print \$1; exit }' ${flagstat})
+    total_reads=\$(awk '/mapped \\(/ { print \$1; exit }' ${flagstat})
 
     fraction=\$(
         awk -v target=${target_reads} \\
             -v total=\$total_reads \\
-            'BEGIN { print total > target ? target / total : 1 }'
+            'BEGIN { print (total > target ? target / total : 1) }'
     )
 
     if [ "\$fraction" != "1" ]; then
-        samtools view -@ ${task.cpus} -s ${seed}.\$fraction -b -o ${prefix}.bam ${bam}
+        samtools view -@ ${task.cpus} -s ${seed}.\${fraction#0.} -b -o ${prefix}.bam ${bam}
         samtools index -@ ${task.cpus} ${prefix}.bam
     else
         ln -s ${bam} ${prefix}.bam
