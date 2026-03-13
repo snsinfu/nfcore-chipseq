@@ -44,6 +44,11 @@ include { DEEPTOOLS_PLOTPROFILE         } from '../modules/nf-core/deeptools/plo
 include { DEEPTOOLS_PLOTHEATMAP         } from '../modules/nf-core/deeptools/plotheatmap/main'
 include { DEEPTOOLS_PLOTFINGERPRINT     } from '../modules/nf-core/deeptools/plotfingerprint/main'
 include { KHMER_UNIQUEKMERS             } from '../modules/nf-core/khmer/uniquekmers/main'
+include { PICARD_MERGESAMFILES as PICARD_MERGE_REPLICATES   } from '../modules/nf-core/picard/mergesamfiles/main'
+include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_REPLICATES       } from '../modules/nf-core/samtools/index/main'
+include { SAMTOOLS_FLAGSTAT as SAMTOOLS_FLAGSTAT_REPLICATES } from '../modules/nf-core/samtools/flagstat/main'
+include { SAMTOOLS_IDXSTATS as SAMTOOLS_IDXSTATS_REPLICATES } from '../modules/nf-core/samtools/idxstats/main'
+include { SAMTOOLS_STATS as SAMTOOLS_STATS_REPLICATES       } from '../modules/nf-core/samtools/stats/main'
 
 //
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -281,6 +286,48 @@ workflow CHIPSEQ {
     ch_versions = ch_versions.mix(BAM_FILTER_BAMTOOLS.out.versions)
 
     //
+    // SUBWORKFLOW: Merge biological replicates
+    //
+    BAM_FILTER_BAMTOOLS.out.bam
+        .map { meta, bam ->
+            def meta_clone = meta.clone()
+            meta_clone.id = meta_clone.id.replaceAll(/_REP\d+$/, "_MERGED")
+            if (meta_clone.control) {
+                meta_clone.control = meta_clone.control.replaceAll(/_REP\d+$/, "_MERGED")
+            }
+            [ meta_clone, bam ]
+        }
+        .groupTuple(by: 0)
+        .filter { meta, bams -> bams.size() > 1 }
+        .set { ch_merge_replicates_input }
+
+    PICARD_MERGE_REPLICATES ( ch_merge_replicates_input )
+    ch_versions = ch_versions.mix(PICARD_MERGE_REPLICATES.out.versions.first())
+
+    SAMTOOLS_INDEX_REPLICATES ( PICARD_MERGE_REPLICATES.out.bam )
+    ch_versions = ch_versions.mix(SAMTOOLS_INDEX_REPLICATES.out.versions.first())
+
+    PICARD_MERGE_REPLICATES.out.bam
+        .join(SAMTOOLS_INDEX_REPLICATES.out.bai, by: [0])
+        .set { ch_merge_bam_bai }
+
+    SAMTOOLS_FLAGSTAT_REPLICATES ( ch_merge_bam_bai )
+    ch_versions = ch_versions.mix(SAMTOOLS_FLAGSTAT_REPLICATES.out.versions.first())
+
+    SAMTOOLS_IDXSTATS_REPLICATES ( ch_merge_bam_bai )
+    ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS_REPLICATES.out.versions.first())
+
+    SAMTOOLS_STATS_REPLICATES ( ch_merge_bam_bai,[] )
+    ch_versions = ch_versions.mix(SAMTOOLS_STATS_REPLICATES.out.versions.first())
+
+    // Mix the original individual replicates with the newly merged ones
+    ch_filtered_bam = BAM_FILTER_BAMTOOLS.out.bam.mix(PICARD_MERGE_REPLICATES.out.bam)
+    ch_filtered_bai = BAM_FILTER_BAMTOOLS.out.bai.mix(SAMTOOLS_INDEX_REPLICATES.out.bai)
+    ch_filtered_flagstat = BAM_FILTER_BAMTOOLS.out.flagstat.mix(SAMTOOLS_FLAGSTAT_REPLICATES.out.flagstat)
+    ch_filtered_idxstats = BAM_FILTER_BAMTOOLS.out.idxstats.mix(SAMTOOLS_IDXSTATS_REPLICATES.out.idxstats)
+    ch_filtered_stats = BAM_FILTER_BAMTOOLS.out.stats.mix(SAMTOOLS_STATS_REPLICATES.out.stats)
+
+    //
     // MODULE: Preseq coverage analysis
     //
     ch_preseq_multiqc = Channel.empty()
@@ -298,9 +345,7 @@ workflow CHIPSEQ {
     ch_picardcollectmultiplemetrics_multiqc = Channel.empty()
     if (!params.skip_picard_metrics) {
         PICARD_COLLECTMULTIPLEMETRICS (
-            BAM_FILTER_BAMTOOLS
-                .out
-                .bam
+            ch_filtered_bam
                 .map {
                     [ it[0], it[1], [] ]
                 },
@@ -326,7 +371,7 @@ workflow CHIPSEQ {
     ch_multiqc_phantompeakqualtools_correlation_multiqc = Channel.empty()
     if (!params.skip_spp) {
         PHANTOMPEAKQUALTOOLS (
-            BAM_FILTER_BAMTOOLS.out.bam
+            ch_filtered_bam
         )
         ch_phantompeakqualtools_spp_multiqc           = PHANTOMPEAKQUALTOOLS.out.spp
         ch_versions = ch_versions.mix(PHANTOMPEAKQUALTOOLS.out.versions.first())
@@ -349,7 +394,7 @@ workflow CHIPSEQ {
     // SUBWORKFLOW: Normalised bigWig coverage tracks
     //
     BAM_BEDGRAPH_BIGWIG_BEDTOOLS_UCSC (
-        BAM_FILTER_BAMTOOLS.out.bam.join(BAM_FILTER_BAMTOOLS.out.flagstat, by: [0]),
+        ch_filtered_bam.join(ch_filtered_flagstat, by: [0]),
         ch_chrom_sizes
     )
     ch_versions = ch_versions.mix(BAM_BEDGRAPH_BIGWIG_BEDTOOLS_UCSC.out.versions)
@@ -387,10 +432,8 @@ workflow CHIPSEQ {
     //
     // Create channels: [ meta, [ ip_bam, control_bam ] [ ip_bai, control_bai ] ]
     //
-    BAM_FILTER_BAMTOOLS
-        .out
-        .bam
-        .join(BAM_FILTER_BAMTOOLS.out.bai, by: [0])
+    ch_filtered_bam
+        .join(ch_filtered_bai, by: [0])
         .set { ch_genome_bam_bai }
 
     ch_genome_bam_bai
@@ -580,9 +623,9 @@ workflow CHIPSEQ {
             BAM_MARKDUPLICATES_PICARD.out.idxstats.collect{it[1]}.ifEmpty([]),
             BAM_MARKDUPLICATES_PICARD.out.metrics.collect{it[1]}.ifEmpty([]),
 
-            BAM_FILTER_BAMTOOLS.out.stats.collect{it[1]}.ifEmpty([]),
-            BAM_FILTER_BAMTOOLS.out.flagstat.collect{it[1]}.ifEmpty([]),
-            BAM_FILTER_BAMTOOLS.out.idxstats.collect{it[1]}.ifEmpty([]),
+            ch_filtered_stats.collect{it[1]}.ifEmpty([]),
+            ch_filtered_flagstat.collect{it[1]}.ifEmpty([]),
+            ch_filtered_idxstats.collect{it[1]}.ifEmpty([]),
             ch_picardcollectmultiplemetrics_multiqc.collect{it[1]}.ifEmpty([]),
 
             ch_preseq_multiqc.collect{it[1]}.ifEmpty([]),
