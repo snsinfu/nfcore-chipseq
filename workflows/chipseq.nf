@@ -487,6 +487,7 @@ workflow CHIPSEQ {
     if (!params.skip_consensus_peaks) {
         // Create channels: [ antibody, [ ip_bams ], single_end_map ]
         ch_ip_control_bam
+            .filter { meta, ip_bam, control_bam -> !meta.id.endsWith("_MERGED") }
             .map {
                 meta, ip_bam, control_bam ->
                     [ meta.antibody, meta.single_end, ip_bam ]
