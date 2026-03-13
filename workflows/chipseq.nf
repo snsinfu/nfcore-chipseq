@@ -285,7 +285,11 @@ workflow CHIPSEQ {
     // SUBWORKFLOW: Merge biological replicates
     //
     MERGE_REPLICATES (
-        BAM_FILTER_BAMTOOLS.out.bam
+        BAM_FILTER_BAMTOOLS.out.bam,
+        ch_fasta
+            .map {
+                [ [:], it ]
+            }
     )
     ch_versions = ch_versions.mix(MERGE_REPLICATES.out.versions)
 

@@ -1,12 +1,11 @@
 include { PICARD_MERGESAMFILES } from '../../modules/nf-core/picard/mergesamfiles/main'
 include { SAMTOOLS_INDEX       } from '../../modules/nf-core/samtools/index/main'
-include { SAMTOOLS_FLAGSTAT    } from '../../modules/nf-core/samtools/flagstat/main'
-include { SAMTOOLS_IDXSTATS    } from '../../modules/nf-core/samtools/idxstats/main'
-include { SAMTOOLS_STATS       } from '../../modules/nf-core/samtools/stats/main'
+include { BAM_STATS_SAMTOOLS   } from '../nf-core/bam_stats_samtools/main'
 
 workflow MERGE_REPLICATES {
     take:
-    ch_bam // channel: [ val(meta), [ bam ] ]
+    ch_bam   // channel: [ val(meta), [ bam ] ]
+    ch_fasta // channel: [ val(meta), path(fasta) ]
 
     main:
     ch_versions = Channel.empty()
@@ -38,21 +37,16 @@ workflow MERGE_REPLICATES {
         .join(SAMTOOLS_INDEX.out.bai, by: [0])
         .set { ch_merge_bam_bai }
 
-    SAMTOOLS_FLAGSTAT ( ch_merge_bam_bai )
-    ch_versions = ch_versions.mix(SAMTOOLS_FLAGSTAT.out.versions.first())
-
-    SAMTOOLS_IDXSTATS ( ch_merge_bam_bai )
-    ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS.out.versions.first())
-
-    SAMTOOLS_STATS ( ch_merge_bam_bai,[] )
-    ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
+    BAM_STATS_SAMTOOLS ( ch_merge_bam_bai, ch_fasta )
+    ch_versions = ch_versions.mix(BAM_STATS_SAMTOOLS.out.versions)
 
     emit:
-    bam      = PICARD_MERGESAMFILES.out.bam     // channel: [ val(meta), [ bam ] ]
-    bai      = SAMTOOLS_INDEX.out.bai           // channel: [ val(meta), [ bai ] ]
-    flagstat = SAMTOOLS_FLAGSTAT.out.flagstat   // channel: [ val(meta), [ flagstat ] ]
-    idxstats = SAMTOOLS_IDXSTATS.out.idxstats   // channel: [ val(meta), [ idxstats ] ]
-    stats    = SAMTOOLS_STATS.out.stats         // channel: [ val(meta), [ stats ] ]
+    bam      = PICARD_MERGESAMFILES.out.bam    // channel: [ val(meta), [ bam ] ]
+    bai      = SAMTOOLS_INDEX.out.bai          // channel: [ val(meta), [ bai ] ]
 
-    versions = ch_versions                      // channel: [ versions.yml ]
+    stats    = BAM_STATS_SAMTOOLS.out.stats    // channel: [ val(meta), [ stats ] ]
+    flagstat = BAM_STATS_SAMTOOLS.out.flagstat // channel: [ val(meta), [ flagstat ] ]
+    idxstats = BAM_STATS_SAMTOOLS.out.idxstats // channel: [ val(meta), [ idxstats ] ]
+
+    versions = ch_versions                     // channel: [ versions.yml ]
 }
