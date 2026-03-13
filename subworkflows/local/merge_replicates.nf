@@ -13,16 +13,28 @@ workflow MERGE_REPLICATES {
     // Group biological replicates by stripping _REP\d from meta.id
     ch_bam
         .map { meta, bam ->
-            def meta_clone = meta.clone()
-            meta_clone.id = meta_clone.id.replaceAll(/_REP\d+$/, "_MERGED")
+            def base_id = meta.id.replaceAll(/_REP\d+$/, "")
+            [ base_id, meta, bam ]
+        }
+        .groupTuple(by: 0)
+        .filter { base_id, meta, bam -> bam.size() > 1 }
+        .map { base_id, meta, bam ->
+            def meta_clone = meta[0].clone()
+            meta_clone.id = base_id + "_MERGED"
+
             if (meta_clone.control) {
-                meta_clone.control = meta_clone.control.replaceAll(/_REP\d+$/, "_MERGED")
+                def unique_controls = meta.collect { it.control }.unique()
+                if (unique_controls.size() == 1) {
+                    // All IPs point to the exact same input replicate. Point to the singleton.
+                    meta_clone.control = unique_controls[0]
+                } else {
+                    // IPs point to different input replicates. The inputs will be merged.
+                    def base_control = unique_controls[0].replaceAll(/_REP\d+$/, "")
+                    meta_clone.control = base_control + "_MERGED"
+                }
             }
             [ meta_clone, bam ]
         }
-        .groupTuple(by: 0)
-        // Only merge if there's more than 1 replicate
-        .filter { meta, bams -> bams.size() > 1 }
         .set { ch_merge_input }
 
     // Merge and index BAMs
