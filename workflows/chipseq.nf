@@ -21,6 +21,7 @@ include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_chip
 include { INPUT_CHECK            } from '../subworkflows/local/input_check'
 include { ALIGN_STAR             } from '../subworkflows/local/align_star'
 include { BAM_FILTER_BAMTOOLS    } from '../subworkflows/local/bam_filter_bamtools'
+include { MERGE_REPLICATES       } from '../subworkflows/local/merge_replicates'
 include { BAM_BEDGRAPH_BIGWIG_BEDTOOLS_UCSC                       } from '../subworkflows/local/bam_bedgraph_bigwig_bedtools_ucsc'
 include { BAM_PEAKS_CALL_QC_ANNOTATE_MACS3_HOMER                  } from '../subworkflows/local/bam_peaks_call_qc_annotate_macs3_homer.nf'
 include { BED_CONSENSUS_QUANTIFY_QC_BEDTOOLS_FEATURECOUNTS_DESEQ2 } from '../subworkflows/local/bed_consensus_quantify_qc_bedtools_featurecounts_deseq2.nf'
@@ -44,11 +45,6 @@ include { DEEPTOOLS_PLOTPROFILE         } from '../modules/nf-core/deeptools/plo
 include { DEEPTOOLS_PLOTHEATMAP         } from '../modules/nf-core/deeptools/plotheatmap/main'
 include { DEEPTOOLS_PLOTFINGERPRINT     } from '../modules/nf-core/deeptools/plotfingerprint/main'
 include { KHMER_UNIQUEKMERS             } from '../modules/nf-core/khmer/uniquekmers/main'
-include { PICARD_MERGESAMFILES as PICARD_MERGE_REPLICATES   } from '../modules/nf-core/picard/mergesamfiles/main'
-include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_REPLICATES       } from '../modules/nf-core/samtools/index/main'
-include { SAMTOOLS_FLAGSTAT as SAMTOOLS_FLAGSTAT_REPLICATES } from '../modules/nf-core/samtools/flagstat/main'
-include { SAMTOOLS_IDXSTATS as SAMTOOLS_IDXSTATS_REPLICATES } from '../modules/nf-core/samtools/idxstats/main'
-include { SAMTOOLS_STATS as SAMTOOLS_STATS_REPLICATES       } from '../modules/nf-core/samtools/stats/main'
 
 //
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -288,44 +284,17 @@ workflow CHIPSEQ {
     //
     // SUBWORKFLOW: Merge biological replicates
     //
-    BAM_FILTER_BAMTOOLS.out.bam
-        .map { meta, bam ->
-            def meta_clone = meta.clone()
-            meta_clone.id = meta_clone.id.replaceAll(/_REP\d+$/, "_MERGED")
-            if (meta_clone.control) {
-                meta_clone.control = meta_clone.control.replaceAll(/_REP\d+$/, "_MERGED")
-            }
-            [ meta_clone, bam ]
-        }
-        .groupTuple(by: 0)
-        .filter { meta, bams -> bams.size() > 1 }
-        .set { ch_merge_replicates_input }
+    MERGE_REPLICATES (
+        BAM_FILTER_BAMTOOLS.out.bam
+    )
+    ch_versions = ch_versions.mix(MERGE_REPLICATES.out.versions)
 
-    PICARD_MERGE_REPLICATES ( ch_merge_replicates_input )
-    ch_versions = ch_versions.mix(PICARD_MERGE_REPLICATES.out.versions.first())
-
-    SAMTOOLS_INDEX_REPLICATES ( PICARD_MERGE_REPLICATES.out.bam )
-    ch_versions = ch_versions.mix(SAMTOOLS_INDEX_REPLICATES.out.versions.first())
-
-    PICARD_MERGE_REPLICATES.out.bam
-        .join(SAMTOOLS_INDEX_REPLICATES.out.bai, by: [0])
-        .set { ch_merge_bam_bai }
-
-    SAMTOOLS_FLAGSTAT_REPLICATES ( ch_merge_bam_bai )
-    ch_versions = ch_versions.mix(SAMTOOLS_FLAGSTAT_REPLICATES.out.versions.first())
-
-    SAMTOOLS_IDXSTATS_REPLICATES ( ch_merge_bam_bai )
-    ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS_REPLICATES.out.versions.first())
-
-    SAMTOOLS_STATS_REPLICATES ( ch_merge_bam_bai,[] )
-    ch_versions = ch_versions.mix(SAMTOOLS_STATS_REPLICATES.out.versions.first())
-
-    // Mix the original individual replicates with the newly merged ones
-    ch_filtered_bam = BAM_FILTER_BAMTOOLS.out.bam.mix(PICARD_MERGE_REPLICATES.out.bam)
-    ch_filtered_bai = BAM_FILTER_BAMTOOLS.out.bai.mix(SAMTOOLS_INDEX_REPLICATES.out.bai)
-    ch_filtered_flagstat = BAM_FILTER_BAMTOOLS.out.flagstat.mix(SAMTOOLS_FLAGSTAT_REPLICATES.out.flagstat)
-    ch_filtered_idxstats = BAM_FILTER_BAMTOOLS.out.idxstats.mix(SAMTOOLS_IDXSTATS_REPLICATES.out.idxstats)
-    ch_filtered_stats = BAM_FILTER_BAMTOOLS.out.stats.mix(SAMTOOLS_STATS_REPLICATES.out.stats)
+    // Mix ALL channels with the original individual replicates for downstream steps
+    ch_filtered_bam = BAM_FILTER_BAMTOOLS.out.bam.mix(MERGE_REPLICATES.out.bam)
+    ch_filtered_bai = BAM_FILTER_BAMTOOLS.out.bai.mix(MERGE_REPLICATES.out.bai)
+    ch_filtered_flagstat = BAM_FILTER_BAMTOOLS.out.flagstat.mix(MERGE_REPLICATES.out.flagstat)
+    ch_filtered_idxstats = BAM_FILTER_BAMTOOLS.out.idxstats.mix(MERGE_REPLICATES.out.idxstats)
+    ch_filtered_stats = BAM_FILTER_BAMTOOLS.out.stats.mix(MERGE_REPLICATES.out.stats)
 
     //
     // MODULE: Preseq coverage analysis
