@@ -14,12 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[#451](https://github.com/nf-core/chipseq/issues/451)] - Pass `map.single_read` to `SUBREAD_FEATURECOUNTS` as to correctly set parameter `-p`.
 - [[PR #462](https://github.com/nf-core/chipseq/pull/462)] - Updated pipeline template to [nf-core/tools 3.2.1](https://github.com/nf-core/tools/releases/tag/3.2.1)
 - [[#468](https://github.com/nf-core/chipseq/issues/468)] - Changed bigWig generation to use `-bga` option instead of `-bg` in `bedtools genomecov` for lower background levels and better IGV visualization. Users can revert to previous behavior using configuration. See [documentation](https://nf-co.re/chipseq/dev/docs/output/#normalised-bigwig-files) for details.
+- Added merged replicate-level analysis. Biological replicates (samples sharing the same id with `_REP<N>` suffixes) are merged into a single alignment and analysed in a dedicated `<ALIGNER>/merged_replicate` output directory. This includes duplicate marking, alignment QC, bigWig tracks, peak calling, consensus peaks and differential binding. The analysis can be disabled with `--skip_merge_replicates` and the merged replicate bigWig files can be skipped with `--skip_merged_replicate_bigwig`.
 
 ### Parameters
 
 | Old parameter | New parameter |
 | ------------- | ------------- |
-|               |               |
+|               | `--skip_merge_replicates`        |
+|               | `--skip_merged_replicate_bigwig` |
 
 > **NB:** Parameter has been **updated** if both old and new parameter information is present.
 > **NB:** Parameter has been **added** if just the new parameter information is present.
@@ -31,7 +33,7 @@ Note, since the pipeline is now using Nextflow DSL2, each process will be run wi
 
 | Dependency | Old version | New version |
 | ---------- | ----------- | ----------- |
-|            |             |             |
+| `picard`   | 3.2.0       | 3.4.0       |
 |            |             |             |
 
 ## [[2.1.0](https://github.com/nf-core/chipseq/releases/tag/2.1.0)] - 2024-10-07

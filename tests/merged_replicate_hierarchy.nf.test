@@ -1,0 +1,79 @@
+nextflow_pipeline {
+
+    name "Test merged replicate output hierarchy"
+    script "../main.nf"
+    tag "merged_replicate"
+
+    test("merged_replicate_outputs_under_merged_replicate") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                // Focus the test on the merged replicate merge, bigWig and peak calling
+                skip_picard_metrics = true
+                skip_preseq = true
+                skip_spp = true
+                skip_plot_profile = true
+                skip_plot_fingerprint = true
+                skip_consensus_peaks = true
+                skip_igv = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            assertAll(
+                { assert workflow.success },
+                // Merged replicate outputs must live under <ALIGNER>/merged_replicate
+                { assert stable_name.contains("bwa/merged_replicate") },
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3") } },
+                // No _MERGED suffixed sample IDs should be produced
+                { assert !stable_name.any { it.toString().contains("_MERGED") } }
+            )
+        }
+    }
+
+    test("skip_merge_replicates") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                skip_merge_replicates = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            assertAll(
+                { assert workflow.success },
+                { assert !stable_name.contains("bwa/merged_replicate") }
+            )
+        }
+    }
+
+    test("skip_merged_replicate_bigwig") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                skip_merged_replicate_bigwig = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            assertAll(
+                { assert workflow.success },
+                // Peak calling on merged replicates still runs without the bigWig
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3") } },
+                { assert !stable_name.any { it.toString().contains("bwa/merged_replicate/bigwig") } },
+                // Consensus peak-set and DESeq2 QC are still produced without the bigWig
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus") } },
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus/SPT5/deseq2") } }
+            )
+        }
+    }
+}

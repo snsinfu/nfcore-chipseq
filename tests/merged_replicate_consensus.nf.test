@@ -1,0 +1,124 @@
+nextflow_pipeline {
+
+    name "Test merged replicate consensus and control handling"
+    script "../main.nf"
+    tag "merged_replicate"
+
+    test("single_condition_runs_merged_replicate_consensus") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                input = "$projectDir/tests/data/samplesheet_single_condition.csv"
+                // Focus the test on the merged replicate merge, peak calling and consensus
+                skip_picard_metrics = true
+                skip_preseq = true
+                skip_spp = true
+                skip_plot_profile = true
+                skip_plot_fingerprint = true
+                skip_igv = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            assertAll(
+                { assert workflow.success },
+                // Consensus peak-set must be generated for a single merged replicate group
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus") } }
+            )
+        }
+    }
+
+    test("mixed_replicates_counts_only_multi_rep_groups") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                input = "$projectDir/tests/data/samplesheet_mixed_replicates.csv"
+                // Focus the test on the merged replicate merge, peak calling and consensus
+                skip_picard_metrics = true
+                skip_preseq = true
+                skip_spp = true
+                skip_plot_profile = true
+                skip_plot_fingerprint = true
+                skip_igv = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            assertAll(
+                { assert workflow.success },
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus") } },
+                // Read counting for the merged replicate consensus must only use the
+                // individual alignments of the multi-replicate groups, not singleton groups
+                {
+                    def fc = file("$outputDir/bwa/merged_replicate/macs3/broad_peak/consensus/SPT5/SPT5.mRp.clN.featureCounts.txt").text
+                    assert !fc.contains("SPT5_SINGLE")
+                }
+            )
+        }
+    }
+
+    test("mismatched_controls_fail_with_clear_error") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                input = "$projectDir/tests/data/samplesheet_mismatched_controls.csv"
+                skip_picard_metrics = true
+                skip_preseq = true
+                skip_spp = true
+                skip_plot_profile = true
+                skip_plot_fingerprint = true
+                skip_igv = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            // The error message "Replicates of sample 'SPT5_T0' reference different
+            // control samples (SPT5_INPUT, NAIVE_INPUT)..." is written to nextflow.log
+            assertAll(
+                { assert workflow.failed }
+            )
+        }
+    }
+
+    test("singleton_control_pairing_uses_individual_control_replicate") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                input = "$projectDir/tests/data/samplesheet_singleton_control.csv"
+                skip_picard_metrics = true
+                skip_preseq = true
+                skip_spp = true
+                skip_plot_profile = true
+                // plot_fingerprint deliberately NOT skipped: it proves which control was paired
+                skip_igv = true
+                skip_multiqc = true
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Peak calling on the merged replicate ran, i.e. the IP was paired with a control
+                { assert file("$outputDir/bwa/merged_replicate/macs3/broad_peak/SPT5_T0.mRp.clN_peaks.xls").exists() },
+                // deepTools plotFingerprint labels are "<meta.id> <meta.control>". A singleton
+                // control must be labelled with the individual control replicate, not the
+                // merged control group id.
+                {
+                    def raw = file("$outputDir/bwa/merged_replicate/deepTools/plotFingerprint/SPT5_T0.mRp.clN.plotFingerprint.raw.txt").text
+                    def label_line = raw.readLines()[1]
+                    assert label_line.contains("'SPT5_INPUT_REP1'")
+                    assert !label_line.contains("'SPT5_INPUT'")
+                }
+            )
+        }
+    }
+}

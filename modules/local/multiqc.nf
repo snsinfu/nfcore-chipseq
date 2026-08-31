@@ -31,21 +31,43 @@ process MULTIQC {
 
     path "preseq/*"
 
-    path "deeptools/*"
-    path "deeptools/*"
+    path "deeptools/merged_library/*"
+    path "deeptools/merged_library/*"
 
-    path "phantompeakqualtools/*"
-    path "phantompeakqualtools/*"
-    path "phantompeakqualtools/*"
-    path "phantompeakqualtools/*"
+    path "phantompeakqualtools/merged_library/*"
+    path "phantompeakqualtools/merged_library/*"
+    path "phantompeakqualtools/merged_library/*"
+    path "phantompeakqualtools/merged_library/*"
 
-    path "macs3/peaks/*"
-    path "macs3/peaks/*"
-    path "macs3/annotation/*"
-    path "macs3/featurecounts/*"
+    path "macs3/merged_library/peaks/*"
+    path "macs3/merged_library/peaks/*"
+    path "macs3/merged_library/annotation/*"
+    path "macs3/merged_library/featurecounts/*"
 
-    path "deseq2/*"
-    path "deseq2/*"
+    path "deseq2_library/*"
+    path "deseq2_library/*"
+
+    path "alignment/merged_replicate/*"
+    path "alignment/merged_replicate/*"
+    path "alignment/merged_replicate/*"
+    path "alignment/merged_replicate/picard_metrics/*"
+    path "alignment/merged_replicate/picard_metrics/*"
+
+    path "deeptools/merged_replicate/*"
+    path "deeptools/merged_replicate/*"
+
+    path "phantompeakqualtools/merged_replicate/*"
+    path "phantompeakqualtools/merged_replicate/*"
+    path "phantompeakqualtools/merged_replicate/*"
+    path "phantompeakqualtools/merged_replicate/*"
+
+    path "macs3/merged_replicate/peaks/*"
+    path "macs3/merged_replicate/peaks/*"
+    path "macs3/merged_replicate/annotation/*"
+    path "macs3/merged_replicate/featurecounts/*"
+
+    path "deseq2_replicate/*"
+    path "deseq2_replicate/*"
 
     output:
     path "*multiqc_report.html", emit: report

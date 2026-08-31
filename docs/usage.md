@@ -6,7 +6,7 @@
 
 ## Samplesheet input
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 5 columns, and a header row as shown in the examples below.
+You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 7 columns, and a header row as shown in the examples below.
 
 ```bash
 --input '[path to samplesheet file]'
@@ -15,6 +15,8 @@ You will need to create a samplesheet with information about the samples you wou
 ### Multiple replicates
 
 The `sample` identifier should be identical when you have multiple replicates from the same experimental group; just increment the `replicate` identifier appropriately. The first replicate value for any given experimental group must be 1.
+
+By default, the filtered alignments of biological replicates are merged and a dedicated merged replicate-level analysis is performed (duplicate marking, alignment QC, normalised bigWig tracks, peak calling, consensus peaks and differential binding). The results are placed under the `<ALIGNER>/merged_replicate` output directory. This analysis can be disabled with the `--skip_merge_replicates` parameter, and the merged replicate bigWig tracks (and their dependent deepTools plots) can be skipped with `--skip_merged_replicate_bigwig`.
 
 The `antibody` column is required to separate the downstream consensus peak merging for different antibodies. It is not advisable to generate a consensus peak set across different antibodies especially if their binding patterns are inherently different e.g. narrow transcription factors and broad histone marks.
 

@@ -68,8 +68,15 @@ You can find numerous talks on the [nf-core events page](https://nf-co.re/events
    10. Create consensus peakset across all samples and create tabular file to aid in the filtering of the data ([`BEDTools`](https://github.com/arq5x/bedtools2/))
    11. Count reads in consensus peaks ([`featureCounts`](http://bioinf.wehi.edu.au/featureCounts/))
    12. PCA and clustering ([`R`](https://www.r-project.org/), [`DESeq2`](https://bioconductor.org/packages/release/bioc/html/DESeq2.html))
-6. Create IGV session file containing bigWig tracks, peaks and differential sites for data visualisation ([`IGV`](https://software.broadinstitute.org/software/igv/)).
-7. Present QC for raw read, alignment, peak-calling and differential binding results ([`MultiQC`](http://multiqc.info/), [`R`](https://www.r-project.org/))
+6. Merge alignments of biological replicates and repeat the downstream analysis on the merged replicates ([`picard`](https://broadinstitute.github.io/picard/))
+   1. Mark duplicates ([`picard`](https://broadinstitute.github.io/picard/))
+   2. Alignment-level QC ([`picard`](https://broadinstitute.github.io/picard/), [`phantompeakqualtools`](https://github.com/kundajelab/phantompeakqualtools), [`deepTools`](https://deeptools.readthedocs.io/en/develop/content/list_of_tools.html))
+   3. Create normalised bigWig files scaled to 1 million mapped reads ([`BEDTools`](https://github.com/arq5x/bedtools2/), [`bedGraphToBigWig`](http://hgdownload.soe.ucsc.edu/admin/exe/))
+   4. Call broad/narrow peaks ([`MACS3`](https://github.com/macs3-project/MACS))
+   5. Annotate peaks relative to gene features ([`HOMER`](http://homer.ucsd.edu/homer/download.html))
+   6. Create consensus peakset, count reads and run PCA and clustering ([`BEDTools`](https://github.com/arq5x/bedtools2/), [`featureCounts`](http://bioinf.wehi.edu.au/featureCounts/), [`R`](https://www.r-project.org/), [`DESeq2`](https://bioconductor.org/packages/release/bioc/html/DESeq2.html))
+7. Create IGV session file containing bigWig tracks, peaks and differential sites for data visualisation ([`IGV`](https://software.broadinstitute.org/software/igv/)).
+8. Present QC for raw read, alignment, peak-calling and differential binding results ([`MultiQC`](http://multiqc.info/), [`R`](https://www.r-project.org/))
 
 ## Usage
 

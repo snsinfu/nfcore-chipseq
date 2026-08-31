@@ -152,7 +152,7 @@ The [bigWig](https://genome.ucsc.edu/goldenpath/help/bigWig.html) format is in a
 >
 > ```groovy
 > process {
->     withName: '.*:BAM_BEDGRAPH_BIGWIG_BEDTOOLS_UCSC:BEDTOOLS_GENOMECOV' {
+>     withName: 'BEDTOOLS_GENOMECOV' {
 >         ext.args = '-bg'
 >     }
 > }
@@ -278,6 +278,73 @@ For larger experiments, it is recommended to use the `vst` transformation instea
 ![MultiQC - DESeq2 PCA plot](images/mqc_deseq2_pca_plot.png)
 
 ![MultiQC - DESeq2 sample similarity plot](images/mqc_deseq2_sample_similarity_plot.png)
+
+## Merged replicate-level analysis
+
+If samples with multiple biological replicates are provided in the samplesheet, the filtered alignments of each replicate group are merged into a single alignment and the downstream analysis is repeated on the merged replicates. The results are saved in a dedicated `<ALIGNER>/merged_replicate/` directory and the file names have the '`.mRp.`' suffix to distinguish them from the merged library-level results. This analysis can be disabled with the `--skip_merge_replicates` parameter.
+
+### Alignment merging, duplicate marking and QC
+
+<details markdown="1">
+    <summary>Output files</summary>
+
+- `<ALIGNER>/merged_replicate/`
+  - `*.mRp.clN.sorted.bam`: Merged replicate-level, coordinate sorted `*.bam` file after the marking of duplicates across the merged alignments. If you specify the `--save_align_intermeds` parameter then the unfiltered merged alignments (`*.mRp.sorted.*`) will also be present.
+- `<ALIGNER>/merged_replicate/samtools_stats/`
+  - SAMtools `*.flagstat`, `*.idxstats` and `*.stats` files generated from the merged replicate alignment files.
+- `<ALIGNER>/merged_replicate/picard_metrics/`
+  - `*_metrics`: Alignment QC files from picard CollectMultipleMetrics.
+  - `*.metrics.txt`: Metrics file from MarkDuplicates.
+- `<ALIGNER>/merged_replicate/picard_metrics/pdf/`
+  - `*.pdf`: Alignment QC plot files from picard CollectMultipleMetrics.
+- `<ALIGNER>/merged_replicate/phantompeakqualtools/`
+  - `*.spp.out`, `*.spp.pdf`: phantompeakqualtools output files for the merged replicates.
+
+> **NB:** File names in the resulting directory (i.e. `<ALIGNER>/merged_replicate/`) will have the '`.mRp.`' suffix.
+
+</details>
+
+The filtered alignments of the biological replicates are merged with [Picard MergeSamFiles](https://broadinstitute.github.io/picard/command-line-overview.html) and [Picard MarkDuplicates](https://broadinstitute.github.io/picard/command-line-overview.html) is used to mark and remove duplicate reads introduced across the replicates. The merged alignments are not filtered a second time; they are derived from the already-filtered merged library-level alignments. By default duplicate reads are removed from the merged alignments; provide the `--keep_dups` parameter to retain them.
+
+### Normalised bigWig files and ChIP-seq QC metrics
+
+<details markdown="1">
+    <summary>Output files</summary>
+
+- `<ALIGNER>/merged_replicate/bigwig/`
+  - `*.mRp.clN.bigWig`: Normalised bigWig files scaled to 1 million mapped reads.
+- `<ALIGNER>/merged_replicate/deepTools/plotFingerprint/`
+  - `*.plotFingerprint.pdf`, `*.plotFingerprint.qcmetrics.txt`, `*.plotFingerprint.raw.txt`: plotFingerprint output files.
+- `<ALIGNER>/merged_replicate/deepTools/plotProfile/`
+  - `*.computeMatrix.mat.gz`, `*.computeMatrix.vals.mat.tab`, `*.plotProfile.pdf`, `*.plotProfile.tab`, `*.plotHeatmap.pdf`, `*.plotHeatmap.mat.tab`: plotProfile output files.
+
+</details>
+
+Normalised bigWig files and the associated deepTools gene-body meta-profile and fingerprint plots are generated for the merged replicates as described in the merged library-level sections above. The generation of the bigWig files (and the dependent deepTools plotProfile/plotHeatmap steps) can be skipped with the `--skip_merged_replicate_bigwig` parameter.
+
+### Call peaks, create consensus peakset and differential binding
+
+<details markdown="1">
+    <summary>Output files</summary>
+
+- `<ALIGNER>/merged_replicate/macs3/<PEAK_TYPE>/`
+  - `*.xls`, `*.broadPeak` or `*.narrowPeak`, `*.gappedPeak`, `*summits.bed`: MACS3 output files called from the merged replicate alignments.
+  - `*.annotatePeaks.txt`: HOMER peak-to-gene annotation file.
+- `<ALIGNER>/merged_replicate/macs3/<PEAK_TYPE>/qc/`
+  - `macs3_peak.mRp.clN.plots.pdf`: QC plots for MACS3 peaks.
+  - `macs3_annotatePeaks.mRp.clN.plots.pdf`: QC plots for peak-to-gene feature annotation.
+  - `*.FRiP_mqc.tsv`, `*.peak_count_mqc.tsv`, `annotatepeaks.summary_mqc.tsv`: MultiQC custom-content files for FRiP score, peak count and peak-to-gene ratios.
+- `<ALIGNER>/merged_replicate/macs3/<PEAK_TYPE>/consensus/<ANTIBODY>/`
+  - `*.mRp.clN.bed`: Consensus peak-set across the merged replicate groups in BED format.
+  - `*.mRp.clN.saf`: Consensus peak-set across the merged replicate groups in SAF format.
+  - `*.mRp.clN.featureCounts.txt`: Read counts across the individual replicate alignments relative to the consensus peak-set.
+  - `*.mRp.clN.boolean.txt`, `*.mRp.clN.boolean.annotatePeaks.txt`: Spreadsheet representations of the consensus peak-set.
+- `<ALIGNER>/merged_replicate/macs3/<PEAK_TYPE>/consensus/<ANTIBODY>/deseq2/`
+  - `*.mRp.clN.pca.vals.txt`, `*.mRp.clN.sample.dists.txt`, `*.mRp.clN.plots.pdf`, `*.mRp.clN.dds.RData`, `*.mRp.clN.rds`: DESeq2 PCA, clustering and differential binding outputs.
+
+</details>
+
+MACS3 peak calling, HOMER annotation and the associated QC plots are performed on the merged replicate alignments as described in the merged library-level sections above. The consensus peak-set is generated across the merged replicate groups, and the read quantification with featureCounts and the DESeq2 QC are performed using the individual replicate alignments so that biological replicate information is retained for the differential binding analysis.
 
 ## Aggregate analysis
 

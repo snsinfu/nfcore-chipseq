@@ -1,9 +1,9 @@
-#id: 'nsc_coefficient'
-#section_name: 'MERGED LIB: spp NSC coefficient'
+#id: 'mrep_nsc_coefficient'
+#section_name: 'MERGED REP: spp NSC coefficient'
 #description: "generated using run_spp.R script from
 #              <a href='https://github.com/kundajelab/phantompeakqualtools' target='_blank'>phantompeakqualtools</a>."
 #plot_type: 'bargraph'
-#anchor: 'nsc_coefficient'
+#anchor: 'mrep_nsc_coefficient'
 #pconfig:
 #    title: 'Normalized strand cross-correlation coefficient'
 #    ylab: 'NSC coefficient'

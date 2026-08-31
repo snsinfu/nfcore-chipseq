@@ -53,8 +53,11 @@ fastqc/*_fastqc.{html,zip}
 **/*.annotatePeaks.txt
 **/*.boolean.annotatePeaks.txt
 **/macs3_peak.summary.txt
+**/macs3_peak.mRp.clN.summary.txt
 **/macs3_annotatePeaks.summary.txt
+**/macs3_annotatePeaks.mRp.clN.summary.txt
 **/macs3_annotatePeaks.summary_mqc.tsv
+**/macs3_annotatePeaks.mRp.clN.summary_mqc.tsv
 
 # Feature counting
 **/*.featureCounts.txt
@@ -68,12 +71,16 @@ fastqc/*_fastqc.{html,zip}
 
 # === YAML CONFIGURATION FILES ===
 **/deeptools_plot_profile_mlib_deeptools.yaml
-**/multiqc_deseq2_clustering_1.yaml
-**/multiqc_deseq2_pca_1.yaml
+**/deeptools_plot_profile_mrep_deeptools.yaml
+**/multiqc_mlib_deseq2_clustering_*.yaml
+**/multiqc_mlib_deseq2_pca_*.yaml
+**/multiqc_mrep_deseq2_clustering_*.yaml
+**/multiqc_mrep_deseq2_pca_*.yaml
 **/multiqc_sources.yaml
 **/read_distribution_profile.yaml
 **/deeptools_fingerprint_plot.yaml
 **/deeptools_plot_fingerprint_counts_mlib_deeptools.yaml
+**/deeptools_plot_fingerprint_counts_mrep_deeptools.yaml
 
 # === CHIP-SEQ SPECIFIC OUTPUTS ===
 # PhantomPeakQualTools outputs (contain variable correlation data)

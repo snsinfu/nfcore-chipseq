@@ -252,6 +252,12 @@
                     "description": "Don\u2019t output BWA MEM alignments with score lower than this parameter.",
                     "fa_icon": "fas fa-hand-paper"
                 },
+                "skip_merge_replicates": {
+                    "type": "boolean",
+                    "description": "Skip the merging of biological replicates and all downstream analyses of the merged replicates.",
+                    "help_text": "When samples with multiple biological replicates are provided, the pipeline merges the filtered alignments of each replicate group and runs the downstream analyses (duplicate marking, QC, bigWig, peak calling, consensus peaks and differential binding) on the merged replicates. Specify this flag to skip this analysis.",
+                    "fa_icon": "fas fa-fast-forward"
+                },
                 "save_align_intermeds": {
                     "type": "boolean",
                     "description": "Save the intermediate BAM files from the alignment step.",
@@ -337,6 +343,12 @@
                 "skip_consensus_peaks": {
                     "type": "boolean",
                     "description": "Skip consensus peak generation, annotation and counting.",
+                    "fa_icon": "fas fa-fast-forward"
+                },
+                "skip_merged_replicate_bigwig": {
+                    "type": "boolean",
+                    "description": "Skip generation of bigWig files for merged replicates.",
+                    "help_text": "Specify this flag to skip the generation of normalised bigWig files (and the dependent deepTools gene-body meta-profile plots) for merged biological replicates. The remaining merged replicate analyses (duplicate marking, QC, peak calling, consensus peaks and differential binding) are still performed.",
                     "fa_icon": "fas fa-fast-forward"
                 }
             }

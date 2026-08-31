@@ -17,10 +17,10 @@ process MACS3_CONSENSUS {
     output:
     tuple val(meta), path("*.bed")          , emit: bed
     tuple val(meta), path("*.saf")          , emit: saf
-    tuple val(meta), path("*.pdf")          , emit: pdf
+    tuple val(meta), path("*.pdf")          , optional: true, emit: pdf
     tuple val(meta), path("*.antibody.txt") , emit: txt
     tuple val(meta), path("*.boolean.txt")  , emit: boolean_txt
-    tuple val(meta), path("*.intersect.txt"), emit: intersect_txt
+    tuple val(meta), path("*.intersect.txt"), optional: true, emit: intersect_txt
     path "versions.yml"                     , emit: versions
 
     when:
@@ -33,13 +33,16 @@ process MACS3_CONSENSUS {
     def mergecols    = is_narrow_peak  ? (2..10).join(',') : (2..9).join(',')
     def collapsecols = is_narrow_peak  ? (['collapse']*9).join(',') : (['collapse']*8).join(',')
     def expandparam  = is_narrow_peak  ? '--is_narrow_peak' : ''
+    def peaks_list   = peaks.collect { it.toString() }.sort()
+    // UpSetR requires at least two sets; a single peak file has no intersection to plot
+    def intersect_cmd = peaks_list.size() > 1 ? "plot_peak_intersect.r -i ${prefix}.boolean.intersect.txt -o ${prefix}.boolean.intersect.plot.pdf" : "# single peak set: no intersection plot generated"
     """
-    sort -T '.' -k1,1 -k2,2n ${peaks.collect{it.toString()}.sort().join(' ')} \\
+    sort -T '.' -k1,1 -k2,2n ${peaks_list.join(' ')} \\
         | mergeBed -c $mergecols -o $collapsecols > ${prefix}.txt
 
     macs3_merged_expand.py \\
         ${prefix}.txt \\
-        ${peaks.collect{it.toString()}.sort().join(',').replaceAll("_peaks.${peak_type}","")} \\
+        ${peaks_list.join(',').replaceAll("_peaks.${peak_type}","")} \\
         ${prefix}.boolean.txt \\
         --min_replicates $params.min_reps_consensus \\
         $args \\
@@ -50,7 +53,7 @@ process MACS3_CONSENSUS {
     echo -e "GeneID\tChr\tStart\tEnd\tStrand" > ${prefix}.saf
     awk -v FS='\t' -v OFS='\t' 'FNR > 1 { print \$4, \$1, \$2, \$3,  "+" }' ${prefix}.boolean.txt >> ${prefix}.saf
 
-    plot_peak_intersect.r -i ${prefix}.boolean.intersect.txt -o ${prefix}.boolean.intersect.plot.pdf
+    $intersect_cmd
 
     echo "${prefix}.bed\t${meta.id}/${prefix}.bed" > ${prefix}.antibody.txt
 
