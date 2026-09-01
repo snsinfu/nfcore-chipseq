@@ -6,4 +6,4 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - "bioconda::deeptools=3.5.5"
+  - "bioconda::deeptools=3.5.6"
