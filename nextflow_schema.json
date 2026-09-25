@@ -350,6 +350,19 @@
                     "description": "Skip generation of bigWig files for merged replicates.",
                     "help_text": "Specify this flag to skip the generation of normalised bigWig files (and the dependent deepTools gene-body meta-profile plots) for merged biological replicates. The remaining merged replicate analyses (duplicate marking, QC, peak calling, consensus peaks and differential binding) are still performed.",
                     "fa_icon": "fas fa-fast-forward"
+                },
+                "downsample_fragments": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Downsample IP BAMs to this number of fragments (templates) before peak calling. Default: disabled.",
+                    "help_text": "Opt-in read-depth balancing for cross-sample peak-coverage comparisons. Downsampling is performed at the fragment level (single-end: one read = one fragment; paired-end: one read1 = one fragment), so mate pairs are retained. It is applied to both the merged-library and merged-replicate peak calls, while controls are not downsampled and featureCounts/DESeq2 keep using the full-depth BAMs. Choose a target no larger than the shallowest control depth: MACS3 balances treatment against control internally (`--scale-to small`), so a shallower control caps the effective depth.",
+                    "fa_icon": "fas fa-balance-scale"
+                },
+                "downsample_seed": {
+                    "type": "integer",
+                    "default": 42,
+                    "description": "Random seed for the samtools `--subsample` step. Only used when --downsample_fragments is set.",
+                    "fa_icon": "fas fa-dice"
                 }
             }
         },

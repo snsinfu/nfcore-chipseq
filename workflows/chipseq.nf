@@ -11,6 +11,8 @@ include { IGV                                 } from '../modules/local/igv'
 include { MULTIQC                             } from '../modules/local/multiqc'
 include { MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS as MERGED_LIBRARY_MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS   } from '../modules/local/multiqc_custom_phantompeakqualtools'
 include { MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS as MERGED_REPLICATE_MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS } from '../modules/local/multiqc_custom_phantompeakqualtools'
+include { DOWNSAMPLE_BAM as DOWNSAMPLE_BAM_LIBRARY   } from '../modules/local/downsample_bam'
+include { DOWNSAMPLE_BAM as DOWNSAMPLE_BAM_REPLICATE } from '../modules/local/downsample_bam'
 
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -468,10 +470,26 @@ workflow CHIPSEQ {
         .set { ch_merged_library_ip_control_bam }
 
     //
+    // Optionally downsample IP BAMs to a fixed fragment depth for peak calling only.
+    // The full-depth channel above is left untouched for consensus/featureCounts/DESeq2.
+    // Controls are passed through untouched (MACS3 balances treatment and control itself).
+    //
+    def ch_peak_input_library = ch_merged_library_ip_control_bam
+    if (params.downsample_fragments) {
+        DOWNSAMPLE_BAM_LIBRARY (
+            ch_merged_library_ip_control_bam.join(ch_merged_library_filter_flagstat, by: [0]),
+            params.downsample_fragments,
+            params.downsample_seed
+        )
+        ch_peak_input_library = DOWNSAMPLE_BAM_LIBRARY.out.bam
+        ch_versions = ch_versions.mix(DOWNSAMPLE_BAM_LIBRARY.out.versions)
+    }
+
+    //
     // SUBWORKFLOW: Call peaks with MACS3, annotate with HOMER and perform downstream QC
     //
     MERGED_LIBRARY_CALL_ANNOTATE_PEAKS (
-        ch_merged_library_ip_control_bam,
+        ch_peak_input_library,
         ch_fasta,
         ch_gtf,
         ch_macs_gsize,
@@ -747,10 +765,25 @@ workflow CHIPSEQ {
         }
 
         //
+        // Optionally downsample the POOLED merged-replicate BAM once for peak calling.
+        // featureCounts/DESeq2 keep using the individual full-depth library BAMs.
+        //
+        def ch_peak_input_replicate = ch_bam_replicate
+        if (params.downsample_fragments) {
+            DOWNSAMPLE_BAM_REPLICATE (
+                ch_bam_replicate.join(MERGED_REPLICATE_MARKDUPLICATES_PICARD.out.flagstat, by: [0]),
+                params.downsample_fragments,
+                params.downsample_seed
+            )
+            ch_peak_input_replicate = DOWNSAMPLE_BAM_REPLICATE.out.bam
+            ch_versions = ch_versions.mix(DOWNSAMPLE_BAM_REPLICATE.out.versions)
+        }
+
+        //
         // SUBWORKFLOW: Call peaks with MACS3, annotate with HOMER and perform downstream QC
         //
         MERGED_REPLICATE_CALL_ANNOTATE_PEAKS (
-            ch_bam_replicate,
+            ch_peak_input_replicate,
             ch_fasta,
             ch_gtf,
             ch_macs_gsize,
