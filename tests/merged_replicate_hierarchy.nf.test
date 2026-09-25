@@ -29,7 +29,10 @@ nextflow_pipeline {
                 { assert stable_name.contains("bwa/merged_replicate") },
                 { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3") } },
                 // No _MERGED suffixed sample IDs should be produced
-                { assert !stable_name.any { it.toString().contains("_MERGED") } }
+                { assert !stable_name.any { it.toString().contains("_MERGED") } },
+                // Merged-library MACS3 outputs must carry the .mLb.clN suffix
+                { assert stable_name.any { it.toString().endsWith("bwa/merged_library/macs3/broad_peak/SPT5_T0_REP1.mLb.clN_peaks.xls") } },
+                { assert !stable_name.any { it.toString() == "bwa/merged_library/macs3/broad_peak/SPT5_T0_REP1_peaks.xls" } }
             )
         }
     }
@@ -72,7 +75,10 @@ nextflow_pipeline {
                 { assert !stable_name.any { it.toString().contains("bwa/merged_replicate/bigwig") } },
                 // Consensus peak-set and DESeq2 QC are still produced without the bigWig
                 { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus") } },
-                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus/SPT5/deseq2") } }
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3/broad_peak/consensus/SPT5/deseq2") } },
+                // Merged-library consensus outputs must carry the .mLb.clN suffix
+                { assert stable_name.any { it.toString().endsWith("bwa/merged_library/macs3/broad_peak/consensus/SPT5/SPT5.mLb.clN.bed") } },
+                { assert !stable_name.any { it.toString().endsWith("consensus/SPT5/SPT5.consensus_peaks.bed") } }
             )
         }
     }
