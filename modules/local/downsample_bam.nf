@@ -63,8 +63,8 @@ process DOWNSAMPLE_BAM {
         if [ "\$CTRL_TOTAL" -lt ${target_fragments} ]; then DEPTH_LIMITED="true"; else DEPTH_LIMITED="false"; fi
     fi
 
-    printf "sample\ttotal_fragments\ttarget_fragments\tfraction\tretained_fragments\tdownsampled\tcontrol_fragments\tdepth_limited\n" > ${prefix}.downsample_summary.txt
-    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" "${prefix}" "\$TOTAL" "${target_fragments}" "\$FRACTION" "\$RETAINED" "\$DOWNSAMPLED" "\$CTRL_TOTAL" "\$DEPTH_LIMITED" >> ${prefix}.downsample_summary.txt
+    printf "sample\\ttotal_fragments\\ttarget_fragments\\tfraction\\tretained_fragments\\tdownsampled\\tcontrol_fragments\\tdepth_limited\\n" > ${prefix}.downsample_summary.txt
+    printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" "${prefix}" "\$TOTAL" "${target_fragments}" "\$FRACTION" "\$RETAINED" "\$DOWNSAMPLED" "\$CTRL_TOTAL" "\$DEPTH_LIMITED" >> ${prefix}.downsample_summary.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -76,7 +76,7 @@ process DOWNSAMPLE_BAM {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.ds.bam
-    printf "sample\ttotal_fragments\ttarget_fragments\tfraction\tretained_fragments\tdownsampled\tcontrol_fragments\tdepth_limited\n" > ${prefix}.downsample_summary.txt
+    printf "sample\\ttotal_fragments\\ttarget_fragments\\tfraction\\tretained_fragments\\tdownsampled\\tcontrol_fragments\\tdepth_limited\\n" > ${prefix}.downsample_summary.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
