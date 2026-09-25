@@ -1,0 +1,61 @@
+nextflow_pipeline {
+
+    name "Test read-depth balanced peak calling via BAM downsampling"
+    script "../main.nf"
+    tag "downsample"
+
+    test("downsample_fragments_opt_in") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                downsample_fragments = 1000
+                downsample_seed = 42
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+
+            def lib_summaries = getAllFilesFromDir("$outputDir/bwa/merged_library/downsample", relative: true)
+                .findAll { it.toString().endsWith('.downsample_summary.txt') }
+            def rep_summaries = getAllFilesFromDir("$outputDir/bwa/merged_replicate/downsample", relative: true)
+                .findAll { it.toString().endsWith('.downsample_summary.txt') }
+
+            // Columns: sample, total_fragments, target_fragments, fraction, retained_fragments, downsampled, control_fragments, depth_limited
+            def lib_rows = lib_summaries.collect { f ->
+                path("$outputDir/bwa/merged_library/downsample/${f}").readLines()
+            }.flatten().findAll { !it.startsWith('sample\t') }
+            def rep_rows = rep_summaries.collect { f ->
+                path("$outputDir/bwa/merged_replicate/downsample/${f}").readLines()
+            }.flatten().findAll { !it.startsWith('sample\t') }
+
+            def downsampled_some = { rows ->
+                rows.any { line ->
+                    def c = line.split('\t')
+                    c[5] == 'true' && (c[4] as int) < (c[1] as int)
+                }
+            }
+
+            def versions = path("$outputDir/pipeline_info/nf_core_chipseq_software_mqc_versions.yml").text
+
+            assertAll(
+                { assert workflow.success },
+                { assert lib_summaries.size() > 0 },
+                { assert rep_summaries.size() > 0 },
+                { assert lib_rows.size() > 0 && rep_rows.size() > 0 },
+                { assert downsampled_some(lib_rows) },
+                { assert downsampled_some(rep_rows) },
+                // Peak calling ran on the downsampled BAMs in both branches
+                { assert stable_name.any { it.toString().contains("bwa/merged_library/macs3") } },
+                { assert stable_name.any { it.toString().contains("bwa/merged_replicate/macs3") } },
+                // Quantification/DESeq2 still produced (full-depth path intact)
+                { assert stable_name.any { it.toString().endsWith("featureCounts.txt") } },
+                { assert stable_name.any { it.toString().contains("deseq2/size_factors") } },
+                // Version reporting for both aliases
+                { assert versions.contains("DOWNSAMPLE_BAM_LIBRARY") },
+                { assert versions.contains("DOWNSAMPLE_BAM_REPLICATE") }
+            )
+        }
+    }
+}
