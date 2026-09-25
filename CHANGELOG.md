@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[PR #462](https://github.com/nf-core/chipseq/pull/462)] - Updated pipeline template to [nf-core/tools 3.2.1](https://github.com/nf-core/tools/releases/tag/3.2.1)
 - [[#468](https://github.com/nf-core/chipseq/issues/468)] - Changed bigWig generation to use `-bga` option instead of `-bg` in `bedtools genomecov` for lower background levels and better IGV visualization. Users can revert to previous behavior using configuration. See [documentation](https://nf-co.re/chipseq/dev/docs/output/#normalised-bigwig-files) for details.
 - Added merged replicate-level analysis. Biological replicates (samples sharing the same id with `_REP<N>` suffixes) are merged into a single alignment and analysed in a dedicated `<ALIGNER>/merged_replicate` output directory. This includes duplicate marking, alignment QC, bigWig tracks, peak calling, consensus peaks and differential binding. The analysis can be disabled with `--skip_merge_replicates` and the merged replicate bigWig files can be skipped with `--skip_merged_replicate_bigwig`.
+- Fixed merged-library peak output naming so that MACS3, HOMER annotation, QC and consensus files carry the `.mLb.clN` suffix. The merged-library MACS3 files were previously named `<SAMPLE>_peaks.xls`, which was inconsistent with the merged-replicate `.mRp.clN` naming and the atacseq reference. This also corrected the `.mLB.clN` capitalisation typo in the merged-library bedGraph filenames.
 
 ### Parameters
 
