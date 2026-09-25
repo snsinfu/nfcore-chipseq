@@ -194,6 +194,26 @@ To further assist in reproducibility, you can use share and reuse [parameter fil
 > [!TIP]
 > If you wish to share such profile (such as upload as supplementary material for academic publications), make sure to NOT include cluster specific paths to files, nor institutional specific profiles.
 
+## Read-depth-balanced peak calling
+
+When comparing peak coverage between cell types or species, differences in sequencing depth can confound peak calls. As an opt-in feature, `--downsample_fragments <N>` downsamples each IP alignment to a fixed global number of fragments (templates) before peak calling, so that all peak sets in a comparison are generated at the same effective depth.
+
+- Downsampling is performed at the fragment level: for single-end data one read equals one fragment, and for paired-end data one read1 equals one fragment. Mate pairs are kept together (`samtools view --subsample`).
+- `--downsample_fragments` must be set to the same value in every pipeline run that takes part in a comparison. The feature is disabled by default and the pipeline is otherwise unchanged.
+- Downsampling is applied to both the merged-library (`MERGED_LIBRARY_CALL_ANNOTATE_PEAKS`) and merged-replicate (`MERGED_REPLICATE_CALL_ANNOTATE_PEAKS`) peak calls. The merged-replicate BAM is downsampled once as a pool, not per replicate.
+- Controls/inputs are **not** downsampled; MACS3 balances treatment against control internally. Read quantification (featureCounts) and DESeq2 always use the full-depth BAMs.
+- `--downsample_seed` (default `42`) sets the subsampling seed for reproducibility.
+- Choose `--downsample_fragments` no larger than the shallowest control depth. MACS3 uses `--scale-to small` by default, which scales the deeper of treatment/control down to the shallower one, so a control shallower than the target caps the effective depth. The `downsample_summary.txt` file reports the IP `total_fragments`, `target_fragments`, `retained_fragments`, `control_fragments` and a `depth_limited` flag for each sample.
+
+```bash
+nextflow run nf-core/chipseq \
+    -profile <docker/singularity/.../institute> \
+    --input samplesheet.csv \
+    --genome GRCh38 \
+    --downsample_fragments 20000000 \
+    --outdir results
+```
+
 ## Core Nextflow arguments
 
 > [!NOTE]
