@@ -52,11 +52,11 @@ fastqc/*_fastqc.{html,zip}
 # Peak calling and annotation
 **/*.annotatePeaks.txt
 **/*.boolean.annotatePeaks.txt
-**/macs3_peak.summary.txt
+**/macs3_peak.mLb.clN.summary.txt
 **/macs3_peak.mRp.clN.summary.txt
-**/macs3_annotatePeaks.summary.txt
+**/macs3_annotatePeaks.mLb.clN.summary.txt
 **/macs3_annotatePeaks.mRp.clN.summary.txt
-**/macs3_annotatePeaks.summary_mqc.tsv
+**/macs3_annotatePeaks.mLb.clN.summary_mqc.tsv
 **/macs3_annotatePeaks.mRp.clN.summary_mqc.tsv
 
 # Feature counting

@@ -475,7 +475,7 @@ workflow CHIPSEQ {
         ch_fasta,
         ch_gtf,
         ch_macs_gsize,
-        "_peaks.annotatePeaks.txt",
+        ".mLb.clN_peaks.annotatePeaks.txt",
         ch_peak_count_header,
         ch_frip_score_header,
         ch_peak_annotation_header,
