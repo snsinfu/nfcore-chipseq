@@ -33,7 +33,7 @@ process BWAMEM2_INDEX {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        bwamem2: \$(echo \$(bwa-mem2 version 2>&1) | sed 's/^v//; s/-.*//; s/ .*//')
+        bwamem2: \$(echo \$(bwa-mem2 version 2>&1) | sed 's/.* //')
     END_VERSIONS
     """
 
@@ -49,7 +49,7 @@ process BWAMEM2_INDEX {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        bwamem2: \$(echo \$(bwa-mem2 version 2>&1) | sed 's/^v//; s/-.*//; s/ .*//')
+        bwamem2: \$(echo \$(bwa-mem2 version 2>&1) | sed 's/.* //')
     END_VERSIONS
     """
 }
