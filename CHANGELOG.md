@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed merged-library peak output naming so that MACS3, HOMER annotation, QC and consensus files carry the `.mLb.clN` suffix. The merged-library MACS3 files were previously named `<SAMPLE>_peaks.xls`, which was inconsistent with the merged-replicate `.mRp.clN` naming and the atacseq reference. This also corrected the `.mLB.clN` capitalisation typo in the merged-library bedGraph filenames.
 - Added opt-in read-depth-balanced peak calling via `--downsample_fragments`. IP alignments are downsampled at the fragment (template) level to a fixed global number of fragments before MACS3 peak calling in both the merged-library and merged-replicate branches. Controls are not downsampled and featureCounts/DESeq2 continue to use the full-depth alignments. `--downsample_seed` (default `42`) controls reproducibility.
 - `--save_macs_pileup` now also publishes bigWig versions of the MACS3 `--bdg --SPMR` signal tracks (`*_treat_pileup.bigWig`, `*_control_lambda.bigWig`) alongside the existing bedGraph files, in both the merged-library and merged-replicate peak directories.
+- Added [`BWA-MEM2`](https://github.com/bwa-mem2/bwa-mem2) and [`BWA-MEM3`](https://github.com/fg-labs/bwa-mem3) as selectable aligners via `--aligner bwa-mem2` / `--aligner bwa-mem3`. Both use their own index format (`.0123`, `.bwt.2bit.64`), so a pre-built index can be supplied with `--bwamem2_index` / `--bwamem3_index` or built automatically from the FASTA.
 
 ### Parameters
 
@@ -27,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 |               | `--skip_merged_replicate_bigwig` |
 |               | `--downsample_fragments`         |
 |               | `--downsample_seed`              |
+|               | `--bwamem2_index`                |
+|               | `--bwamem3_index`                |
 
 > **NB:** Parameter has been **updated** if both old and new parameter information is present.
 > **NB:** Parameter has been **added** if just the new parameter information is present.
@@ -39,7 +42,8 @@ Note, since the pipeline is now using Nextflow DSL2, each process will be run wi
 | Dependency | Old version | New version |
 | ---------- | ----------- | ----------- |
 | `picard`   | 3.2.0       | 3.4.0       |
-|            |             |             |
+| `bwa-mem2` |             | 2.3         |
+| `bwa-mem3` |             | 0.8.0       |
 
 ## [[2.1.0](https://github.com/nf-core/chipseq/releases/tag/2.1.0)] - 2024-10-07
 
