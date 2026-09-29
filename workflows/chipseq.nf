@@ -57,6 +57,8 @@ include { DEEPTOOLS_PLOTHEATMAP as MERGED_REPLICATE_DEEPTOOLS_PLOTHEATMAP } from
 include { DEEPTOOLS_PLOTFINGERPRINT as MERGED_LIBRARY_DEEPTOOLS_PLOTFINGERPRINT   } from '../modules/nf-core/deeptools/plotfingerprint/main'
 include { DEEPTOOLS_PLOTFINGERPRINT as MERGED_REPLICATE_DEEPTOOLS_PLOTFINGERPRINT } from '../modules/nf-core/deeptools/plotfingerprint/main'
 include { KHMER_UNIQUEKMERS             } from '../modules/nf-core/khmer/uniquekmers/main'
+include { UCSC_BEDGRAPHTOBIGWIG as MERGED_LIBRARY_MACS3_PILEUP_TO_BIGWIG   } from '../modules/nf-core/ucsc/bedgraphtobigwig/main'
+include { UCSC_BEDGRAPHTOBIGWIG as MERGED_REPLICATE_MACS3_PILEUP_TO_BIGWIG } from '../modules/nf-core/ucsc/bedgraphtobigwig/main'
 
 //
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -504,6 +506,22 @@ workflow CHIPSEQ {
     ch_versions = ch_versions.mix(MERGED_LIBRARY_CALL_ANNOTATE_PEAKS.out.versions)
 
     //
+    // MODULE: Convert MACS3 SPMR pileup bedGraph tracks (treat + control) to bigWig
+    //
+    if (params.save_macs_pileup) {
+        MERGED_LIBRARY_MACS3_PILEUP_TO_BIGWIG (
+            MERGED_LIBRARY_CALL_ANNOTATE_PEAKS.out.bedgraph
+                .flatMap { meta, bdgs ->
+                    (bdgs instanceof List ? bdgs : [bdgs]).collect { bdg ->
+                        [ meta + [id: bdg.baseName], bdg ]
+                    }
+                },
+            ch_chrom_sizes
+        )
+        ch_versions = ch_versions.mix(MERGED_LIBRARY_MACS3_PILEUP_TO_BIGWIG.out.versions)
+    }
+
+    //
     //  Consensus peaks analysis
     //
     ch_macs3_consensus_bed_lib   = Channel.empty()
@@ -800,6 +818,22 @@ workflow CHIPSEQ {
         ch_macs3_peak_count_replicate_multiqc               = MERGED_REPLICATE_CALL_ANNOTATE_PEAKS.out.peak_count_multiqc
         ch_macs3_plot_homer_annotatepeaks_replicate_multiqc = MERGED_REPLICATE_CALL_ANNOTATE_PEAKS.out.plot_homer_annotatepeaks_tsv
         ch_versions = ch_versions.mix(MERGED_REPLICATE_CALL_ANNOTATE_PEAKS.out.versions)
+
+        //
+        // MODULE: Convert MACS3 SPMR pileup bedGraph tracks (treat + control) to bigWig
+        //
+        if (params.save_macs_pileup) {
+            MERGED_REPLICATE_MACS3_PILEUP_TO_BIGWIG (
+                MERGED_REPLICATE_CALL_ANNOTATE_PEAKS.out.bedgraph
+                    .flatMap { meta, bdgs ->
+                        (bdgs instanceof List ? bdgs : [bdgs]).collect { bdg ->
+                            [ meta + [id: bdg.baseName], bdg ]
+                        }
+                    },
+                ch_chrom_sizes
+            )
+            ch_versions = ch_versions.mix(MERGED_REPLICATE_MACS3_PILEUP_TO_BIGWIG.out.versions)
+        }
 
         //
         // Create channel: [ antibody, [ ip_bams ], single_end_map ] for the
