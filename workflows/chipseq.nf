@@ -23,6 +23,8 @@ include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pi
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_chipseq_pipeline'
 include { INPUT_CHECK            } from '../subworkflows/local/input_check'
 include { ALIGN_STAR             } from '../subworkflows/local/align_star'
+include { ALIGN_BWAMEM2          } from '../subworkflows/local/align_bwamem2'
+include { ALIGN_BWAMEM3          } from '../subworkflows/local/align_bwamem3'
 include { BAM_FILTER_BAMTOOLS as MERGED_LIBRARY_FILTER_BAM                    } from '../subworkflows/local/bam_filter_bamtools'
 include { BAM_BEDGRAPH_BIGWIG_BEDTOOLS_UCSC as MERGED_LIBRARY_BAM_TO_BIGWIG   } from '../subworkflows/local/bam_bedgraph_bigwig_bedtools_ucsc'
 include { BAM_BEDGRAPH_BIGWIG_BEDTOOLS_UCSC as MERGED_REPLICATE_BAM_TO_BIGWIG } from '../subworkflows/local/bam_bedgraph_bigwig_bedtools_ucsc'
@@ -126,6 +128,8 @@ workflow CHIPSEQ {
     ch_bowtie2_index // channel: path(bowtie2/index)
     ch_chromap_index // channel: path(chromap.index)
     ch_star_index    // channel: path(star/index/)
+    ch_bwamem2_index // channel: path(bwamem2/index/)
+    ch_bwamem3_index // channel: path(bwamem3/index/)
 
     main:
     ch_multiqc_files = channel.empty()
@@ -249,6 +253,46 @@ workflow CHIPSEQ {
         ch_star_multiqc      = ALIGN_STAR.out.log_final
 
         ch_versions = ch_versions.mix(ALIGN_STAR.out.versions)
+    }
+
+    //
+    // SUBWORKFLOW: Alignment with bwa-mem2 & BAM QC
+    //
+    if (params.aligner == 'bwa-mem2') {
+        ALIGN_BWAMEM2 (
+            FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.reads,
+            ch_bwamem2_index,
+            ch_fasta
+                .map {
+                    [ [:], it ]
+                }
+        )
+        ch_genome_bam        = ALIGN_BWAMEM2.out.bam
+        ch_genome_bam_index  = ALIGN_BWAMEM2.out.bai
+        ch_samtools_stats    = ALIGN_BWAMEM2.out.stats
+        ch_samtools_flagstat = ALIGN_BWAMEM2.out.flagstat
+        ch_samtools_idxstats = ALIGN_BWAMEM2.out.idxstats
+        ch_versions = ch_versions.mix(ALIGN_BWAMEM2.out.versions)
+    }
+
+    //
+    // SUBWORKFLOW: Alignment with bwa-mem3 & BAM QC
+    //
+    if (params.aligner == 'bwa-mem3') {
+        ALIGN_BWAMEM3 (
+            FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.reads,
+            ch_bwamem3_index,
+            ch_fasta
+                .map {
+                    [ [:], it ]
+                }
+        )
+        ch_genome_bam        = ALIGN_BWAMEM3.out.bam
+        ch_genome_bam_index  = ALIGN_BWAMEM3.out.bai
+        ch_samtools_stats    = ALIGN_BWAMEM3.out.stats
+        ch_samtools_flagstat = ALIGN_BWAMEM3.out.flagstat
+        ch_samtools_idxstats = ALIGN_BWAMEM3.out.idxstats
+        ch_versions = ch_versions.mix(ALIGN_BWAMEM3.out.versions)
     }
 
     //
