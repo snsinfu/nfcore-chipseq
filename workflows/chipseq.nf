@@ -13,6 +13,7 @@ include { MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS as MERGED_LIBRARY_MULTIQC_CUSTOM_P
 include { MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS as MERGED_REPLICATE_MULTIQC_CUSTOM_PHANTOMPEAKQUALTOOLS } from '../modules/local/multiqc_custom_phantompeakqualtools'
 include { DOWNSAMPLE_BAM as DOWNSAMPLE_BAM_LIBRARY   } from '../modules/local/downsample_bam'
 include { DOWNSAMPLE_BAM as DOWNSAMPLE_BAM_REPLICATE } from '../modules/local/downsample_bam'
+include { FASTQ_READ_LENGTH                          } from '../modules/local/fastq_read_length'
 
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -454,15 +455,52 @@ workflow CHIPSEQ {
     }
 
     //
-    // MODULE: Calculute genome size with khmer
+    // Resolve read length: explicit param, otherwise infer from the first FASTQ
+    // when the effective genome size still has to be resolved.
+    //
+    ch_read_length = Channel.empty()
+    if (params.read_length) {
+        ch_read_length = Channel.value(params.read_length as Integer)
+    }
+    else if (!params.macs_gsize) {
+        FASTQ_READ_LENGTH (
+            INPUT_CHECK.out.reads
+                .map { meta, fastqs -> [ meta, fastqs[0] ] }
+                .first()
+        )
+        ch_read_length = FASTQ_READ_LENGTH.out.read_length
+            .map { _meta, txt -> txt.text.trim() as Integer }
+            .collect()
+            .map { lengths -> lengths.max() }
+    }
+
+    //
+    // MODULE: Calculate genome size with khmer, or resolve from the genome catalog
     //
     ch_macs_gsize                     = Channel.empty()
     ch_subreadfeaturecounts_multiqc   = Channel.empty()
-    ch_macs_gsize = params.macs_gsize
-    if (!params.macs_gsize) {
+    def catalog_gsize = params.genomes?.containsKey(params.genome) ? params.genomes[params.genome]['macs_gsize'] : null
+    if (params.macs_gsize) {
+        ch_macs_gsize = Channel.value(params.macs_gsize)
+    }
+    else if (catalog_gsize && !params.read_length) {
+        // Read length was inferred: use the exact catalog key if it exists,
+        // otherwise fall back to khmer. The khmer input is filtered to the
+        // non-matching lengths so the process runs no task when the key matches.
         KHMER_UNIQUEKMERS (
             ch_fasta,
-            params.read_length
+            ch_read_length.filter { read_length -> !catalog_gsize.containsKey(read_length.toString()) }
+        )
+        ch_khmer_gsize = KHMER_UNIQUEKMERS.out.kmers.map { it.text.trim() }
+        ch_catalog_gsize = ch_read_length
+            .filter { read_length -> catalog_gsize.containsKey(read_length.toString()) }
+            .map { read_length -> catalog_gsize[read_length.toString()] }
+        ch_macs_gsize = ch_catalog_gsize.mix(ch_khmer_gsize)
+    }
+    else {
+        KHMER_UNIQUEKMERS (
+            ch_fasta,
+            ch_read_length
         )
         ch_macs_gsize = KHMER_UNIQUEKMERS.out.kmers.map { it.text.trim() }
     }
