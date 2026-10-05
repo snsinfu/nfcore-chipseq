@@ -495,7 +495,10 @@ workflow CHIPSEQ {
         ch_catalog_gsize = ch_read_length
             .filter { read_length -> catalog_gsize.containsKey(read_length.toString()) }
             .map { read_length -> catalog_gsize[read_length.toString()] }
-        ch_macs_gsize = ch_catalog_gsize.mix(ch_khmer_gsize)
+        // Only one of the two channels emits a value. `first()` re-wraps the single
+        // value in a value channel; without it `mix` yields a queue singleton that
+        // is consumed by the first MACS3 task only, silently dropping the others.
+        ch_macs_gsize = ch_catalog_gsize.mix(ch_khmer_gsize).first()
     }
     else {
         KHMER_UNIQUEKMERS (
