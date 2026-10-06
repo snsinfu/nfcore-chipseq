@@ -1,0 +1,31 @@
+nextflow_pipeline {
+
+    name "Test aligner supplied via -c config file"
+    script "../main.nf"
+    tag "bwa-mem3"
+
+    test("bwa-mem3 from config file") {
+
+        // Reproduces selecting the aligner from a `-c` config file (or a
+        // launch-dir nextflow.config) rather than from the CLI/params file.
+        // Before the fix, conf/modules.config's `if (params.aligner == ...)`
+        // was evaluated before this config was merged, so BWAMEM3_MEM got no
+        // ext.args/ext.prefix/publishDir and the run failed.
+        config "./params_aligner_bwa_mem3.config"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                // deliberately do NOT set aligner here
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert new File("$outputDir/bwa-mem3/merged_library").exists() },
+                { assert !new File("$outputDir/bwamem3").exists() }
+            )
+        }
+    }
+}
